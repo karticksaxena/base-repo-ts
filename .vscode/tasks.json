@@ -1,0 +1,147 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "backend: dev",
+      "type": "shell",
+      "command": "pnpm run start:dev",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "backend: lint",
+      "type": "shell",
+      "command": "pnpm run --silent lint --format unix",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": [
+        {
+          "owner": "oxlint",
+          "source": "oxlint",
+          "fileLocation": [
+            "relative",
+            "${workspaceFolder}/backend"
+          ],
+          "pattern": {
+            "regexp": "^(.+?):(\\d+):(\\d+): (.*) \\[(Error|Warning)/(.+)\\]$",
+            "file": 1,
+            "line": 2,
+            "column": 3,
+            "message": 4,
+            "severity": 5,
+            "code": 6
+          }
+        }
+      ]
+    },
+    {
+      "label": "backend: typecheck",
+      "type": "shell",
+      "command": "pnpm run typecheck",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": [
+        {
+          "base": "$tsc",
+          "fileLocation": [
+            "relative",
+            "${workspaceFolder}/backend"
+          ]
+        }
+      ]
+    },
+    {
+      "label": "backend: format",
+      "type": "shell",
+      "command": "pnpm run format:check",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "backend: test",
+      "type": "shell",
+      "command": "pnpm run test && pnpm run test:e2e",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "frontend: dev",
+      "type": "shell",
+      "command": "pnpm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "frontend: test",
+      "type": "shell",
+      "command": "pnpm run test",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "frontend: lint",
+      "type": "shell",
+      "command": "pnpm run --silent lint --format unix",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "problemMatcher": [
+        {
+          "owner": "oxlint",
+          "source": "oxlint",
+          "fileLocation": [
+            "relative",
+            "${workspaceFolder}/frontend"
+          ],
+          "pattern": {
+            "regexp": "^(.+?):(\\d+):(\\d+): (.*) \\[(Error|Warning)/(.+)\\]$",
+            "file": 1,
+            "line": 2,
+            "column": 3,
+            "message": 4,
+            "severity": 5,
+            "code": 6
+          }
+        }
+      ]
+    },
+    {
+      "label": "frontend: typecheck",
+      "type": "shell",
+      "command": "pnpm run typecheck",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "problemMatcher": [
+        {
+          "base": "$tsc",
+          "fileLocation": [
+            "relative",
+            "${workspaceFolder}/frontend"
+          ]
+        }
+      ]
+    },
+    {
+      "label": "frontend: format",
+      "type": "shell",
+      "command": "pnpm run format:check",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
