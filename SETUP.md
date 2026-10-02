@@ -18,6 +18,8 @@ When setting up or verifying dev tooling in a repo built from this template:
 6. **Never lint `node_modules`** — oxlint skips it only via `.gitignore` or `ignorePatterns`. Both are set; keep them.
 7. **Verify with CLI** before claiming done (see [Verify CLI](#verify-cli)), then run the editor smoke test and remove it.
 8. **Do not use** deprecated VS Code settings: `typescript.tsdk`, `typescript.enablePromptUseWorkspaceTsdk` (use `js/ts.tsdk.path`, `js/ts.tsdk.promptToUseWorkspaceVersion`).
+9. **Never put `options` (e.g. `typeAware`) in `backend/` or `frontend/` `.oxlintrc.json`** — VS Code opens the repo root, so those configs are *nested*, and oxlint rejects root-only options there; the editor then silently drops the whole config. Type-aware linting comes from `--type-aware` in the `lint` scripts (CLI) and `oxc.typeAware` + `oxc.path.tsgolint` in `.vscode/settings.json` (editor).
+10. **Check the editor, not just the CLI** — the [editor smoke test](#verify-editor-smoke-test--delete-after) must show the same errors as `pnpm run lint`.
 
 ### What the Python tools map to
 
@@ -45,7 +47,7 @@ VS Code has **no global "show workspace-wide problems" setting** — each extens
 | Tool | Background check of **all** files? | Full project scan into the Problems panel |
 |------|-------------------------------------|-------------------------------------------|
 | **TypeScript** | **YES (experimental)** — `js/ts.tsserver.experimental.enableProjectDiagnostics: true` in user settings; covers each TS project once a file from it has been opened | **Tasks → `backend: typecheck` / `frontend: typecheck`** (`$tsc` matcher) |
-| **oxlint** | **NO** — the Oxc extension lints open/edited files only (no workspace mode) | **Tasks → `backend: lint` / `frontend: lint`** (custom `oxlint` matcher, `--format unix`) |
+| **oxlint** | **NO** — verified: the oxlint language server advertises `workspaceDiagnostics: false`, so VS Code only gets problems for open files (no setting changes this) | **Tasks → `backend: lint` / `frontend: lint`** (custom `oxlint` matcher, `--format unix`) |
 
 **Empty Problems panel = clean code** when the CLI passes.
 
@@ -207,15 +209,24 @@ describe('App (e2e)', () => {
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["typescript", "unicorn", "oxc", "import", "node", "promise", "vitest"],
-  "categories": { "correctness": "error", "suspicious": "warn" },
-  "options": { "typeAware": true },
-  "env": { "node": true },
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "env": {
+    "node": true
+  },
   "rules": {
     "typescript/no-explicit-any": "error",
     "typescript/no-floating-promises": "error",
     "typescript/no-misused-promises": "error",
     "typescript/await-thenable": "error",
-    "typescript/no-extraneous-class": ["warn", { "allowWithDecorator": true }],
+    "typescript/no-extraneous-class": [
+      "warn",
+      {
+        "allowWithDecorator": true
+      }
+    ],
     "typescript/no-unsafe-argument": "error",
     "typescript/no-unsafe-assignment": "error",
     "typescript/no-unsafe-call": "error",
@@ -223,7 +234,10 @@ describe('App (e2e)', () => {
     "typescript/no-unsafe-return": "error",
     "typescript/explicit-function-return-type": [
       "error",
-      { "allowExpressions": true, "allowTypedFunctionExpressions": true }
+      {
+        "allowExpressions": true,
+        "allowTypedFunctionExpressions": true
+      }
     ],
     "eslint/no-eval": "error",
     "eslint/no-implied-eval": "error",
@@ -240,7 +254,7 @@ describe('App (e2e)', () => {
 ```
 
 - `plugins` **replaces** the defaults (`typescript`, `unicorn`, `oxc`) — always list them.
-- `options.typeAware` needs `oxlint-tsgolint` (Nest installs it). Catches floating promises, misused promises etc. — the closest thing to basedpyright strictness.
+- Type-aware linting needs `oxlint-tsgolint` (Nest installs it) and is switched on by the `--type-aware` flag in the `lint` scripts — **not** `options.typeAware`: oxlint only allows that option in the root config, and VS Code treats `backend/` and `frontend/` configs as nested (the editor then rejects the config and silently falls back to defaults). The editor gets type-aware linting from `"oxc.typeAware": true` in `.vscode/settings.json`.
 - Nest tightened: `no-explicit-any` is `off` by default — this template makes it an error.
 - `no-extraneous-class` + `allowWithDecorator` — Nest modules are empty decorated classes.
 - `no-unsafe-*` (type-aware) — blocks `any` from flowing into typed code (basedpyright-level strictness).
@@ -274,8 +288,8 @@ printf 'pnpm-lock.yaml\npnpm-workspace.yaml\ndist\ncoverage\n' > .prettierignore
 
 ```json
 {
-  "lint": "oxlint --deny-warnings",
-  "lint:fix": "oxlint --fix",
+  "lint": "oxlint --type-aware --deny-warnings",
+  "lint:fix": "oxlint --type-aware --fix",
   "typecheck": "tsc --noEmit",
   "format": "prettier --write .",
   "format:check": "prettier --check .",
@@ -385,9 +399,6 @@ echo 'lts/*' > .nvmrc
     "correctness": "error",
     "suspicious": "warn"
   },
-  "options": {
-    "typeAware": true
-  },
   "env": {
     "browser": true
   },
@@ -492,8 +503,8 @@ Scripts (`frontend/package.json`):
   "dev": "next dev",
   "build": "next build",
   "start": "next start",
-  "lint": "oxlint --deny-warnings",
-  "lint:fix": "oxlint --fix",
+  "lint": "oxlint --type-aware --deny-warnings",
+  "lint:fix": "oxlint --type-aware --fix",
   "typecheck": "next typegen && tsc --noEmit",
   "format": "prettier --write .",
   "format:check": "prettier --check .",
@@ -586,11 +597,13 @@ Without it oxlint lints `node_modules` and appears to hang.
 {
   "npm.autoDetect": "off",
   "js/ts.tsdk.path": "backend/node_modules/typescript/lib",
-  "js/ts.tsdk.promptToUseWorkspaceVersion": true
+  "js/ts.tsdk.promptToUseWorkspaceVersion": true,
+  "oxc.typeAware": true,
+  "oxc.path.tsgolint": "backend/node_modules/.bin/tsgolint"
 }
 ```
 
-The Oxc extension finds nested `backend/.oxlintrc.json` and `frontend/.oxlintrc.json` automatically (it searches `**/.oxlintrc.json`) and uses the `oxlint` binary from each package's `node_modules`.
+The Oxc extension finds nested `backend/.oxlintrc.json` and `frontend/.oxlintrc.json` automatically (it searches `**/.oxlintrc.json`). Its language server runs from the **repo root**, which has no `node_modules`, so it can't find `tsgolint` (the type-aware engine) on its own — `oxc.path.tsgolint` points it at the backend's copy (relative to the repo root; one copy serves both packages). Keep `oxlint` / `oxlint-tsgolint` on the same versions in both packages.
 
 ### `.vscode/tasks.json` — manual only
 
@@ -637,7 +650,6 @@ Never add `"runOn": "folderOpen"` unless the user asks.
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.codeActionsOnSave": {
       "source.fixAll.oxc": "always",
-      "source.fixAll.eslint": "always",
       "source.organizeImports": "always"
     }
   },
@@ -648,8 +660,10 @@ Never add `"runOn": "folderOpen"` unless the user asks.
 
 Repeat the `[typescript]` block for `[typescriptreact]`, `[javascript]`, `[javascriptreact]`.
 
-- `source.fixAll.oxc` + `source.fixAll.eslint` side by side — each only acts in projects that use it.
-- `oxc.requireConfig: true` — the Oxc extension runs only where a `.oxlintrc.json` exists, so ESLint projects don't get duplicate warnings.
+- `source.fixAll.oxc` applies oxlint's safe fixes on save; Prettier (with the organize-imports plugin) formats and sorts/removes imports.
+- `files.autoSave: onFocusChange` saves — and therefore formats and fixes — only files with **unsaved edits** when you click away. A file changed on disk by an agent or a tool isn't dirty, so nothing runs until you type in it or press Cmd+S.
+- `oxc.requireConfig: true` — the Oxc extension runs only where a `.oxlintrc.json` exists, so non-oxlint projects don't get default-rule warnings.
+- The ESLint extension isn't needed for this repo.
 
 ---
 
@@ -669,17 +683,34 @@ All must pass. Then boot once: `cd backend && pnpm run start` → `curl localhos
 
 ## Verify editor (smoke test — delete after)
 
-Create `backend/src/smoke.ts`:
+Reload the window first (Cmd+Shift+P → **Developer: Reload Window**). Create `backend/src/smoke.ts`:
 
 ```ts
 // SMOKE TEST: delete after verifying
+import { Controller } from "@nestjs/common"
+
 async function save(): Promise<void> {}
-export function run(value: any): void {
+
+export function run(value: any) {
+  console.log(value)
   save();
 }
 ```
 
-Expect in Problems (source **oxc**): `no-floating-promises`, `no-explicit-any`, `no-unused-vars`. Save the file → Prettier formats it. Then delete it.
+Expect in Problems, source **oxc**, all as **errors**: `no-unused-vars`, `explicit-function-return-type`, `no-explicit-any`, `no-console`, `no-floating-promises`. The last one proves type-aware linting works in the editor. Compare with `cd backend && pnpm run lint` — the lists must match.
+
+Type a character, then click into another file (auto-save): the unused import disappears, `"@nestjs/common"` becomes single-quoted, semicolons are added.
+
+Frontend: create `frontend/src/app/smoke.tsx`:
+
+```tsx
+// SMOKE TEST: delete after verifying
+export function Smoke(): React.JSX.Element {
+  return <a href="/about"><img src="/next.svg" alt="logo" /></a>;
+}
+```
+
+Expect `next(no-html-link-for-pages)` and `next(no-img-element)` as errors. Delete both smoke files afterwards.
 
 ---
 
@@ -702,8 +733,12 @@ Expect in Problems (source **oxc**): `no-floating-promises`, `no-explicit-any`, 
 | `no-console` error | Backend: use Nest `Logger`; frontend: remove before committing |
 | Lint/format fails right after `nest g resource` | Use `--crud false`, then `pnpm run format` (generator ignores `.prettierrc`) |
 | Vitest fails on an empty `*.spec.ts` | Vitest rejects test files with no tests — write a test or delete the file |
+| Editor shows only a few oxc **warnings** while `pnpm run lint` shows errors | A package `.oxlintrc.json` contains `options.typeAware` — not allowed in nested configs, so the editor drops the whole config. Remove it; use `--type-aware` in scripts + `"oxc.typeAware": true` in `.vscode/settings.json`, then **Oxc: Restart Server** / Reload Window. Check from the repo root: `PATH=backend/node_modules/.bin:$PATH oxlint --type-aware backend/src` |
+| Editor shows most oxc errors but not `no-floating-promises` / `no-unsafe-*` | Type-aware engine not found: set `"oxc.path.tsgolint": "backend/node_modules/.bin/tsgolint"` in `.vscode/settings.json`, then Reload Window |
 | Oxc extension silent | `.oxlintrc.json` missing, or extension not installed; Output panel → **Oxc** |
-| Duplicate lint warnings in ESLint projects | Set `oxc.requireConfig: true` in user settings |
+| Oxc warnings in a project with no `.oxlintrc.json` | Set `oxc.requireConfig: true` in user settings |
+| Format/fix on save didn't run after an agent edited a file | Auto-save only saves unsaved edits — type in the file or press Cmd+S |
+| Problems panel misses issues in files you haven't opened | Expected: oxlint lints open files only. Run **Tasks → backend: lint / frontend: lint** for a full scan |
 | `Cannot find name 'LayoutProps'` (frontend) | `typecheck` must run `next typegen` before `tsc` |
 | `no-unassigned-import` on `globals.css` | Allow `**/*.css` for that rule |
 | `pnpm add prisma` installed a release candidate | `latest` points to a prerelease — install the newest stable version (`pnpm view prisma versions`) for `prisma`, `@prisma/client`, `@prisma/adapter-pg` |
@@ -760,7 +795,7 @@ Before marking tooling setup done, confirm:
 1. Backend: `lint`, `typecheck`, `format:check`, `test`, `test:e2e`, `build`, `audit` all pass
 2. Frontend: `lint`, `typecheck`, `format:check`, `test`, `build`, `audit` all pass on a clean checkout (`rm -rf .next` first)
 3. Server boots and `GET /` returns `Hello World!`
-4. Editor smoke test shows oxc diagnostics (then removed)
+4. Editor smoke test shows the **same errors as `pnpm run lint`** — as errors, not warnings, and including `no-floating-promises` (proves type-aware works) — then removed
 5. Same TypeScript major in both packages; no prerelease versions; no ESLint/Jest/supertest leftovers (`eslint.config.mjs`, `eslint`, `eslint-config-next`)
 6. `pnpm-workspace.yaml` committed with no entries for removed packages; `pnpm install` runs clean from scratch
 7. Same `@types/node` major in both packages; `.nvmrc` = `lts/*` in both

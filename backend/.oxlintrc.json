@@ -5,9 +5,6 @@
     "correctness": "error",
     "suspicious": "warn"
   },
-  "options": {
-    "typeAware": true
-  },
   "env": {
     "node": true
   },
